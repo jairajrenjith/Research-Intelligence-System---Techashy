@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Research Intelligence System</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2d3048;
+    --text: #e8eaf0; --muted: #7b82a0; --accent: #6c63ff;
+    --accent2: #a78bfa; --surface2: #12141c;
+    --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --blue: #3b82f6;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 15px; line-height: 1.6; }
+  .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px; }
+  .topbar-left h1 { font-size: 1.8rem; font-weight: 700; color: #fff; }
+  .topbar-left h1 span { color: var(--accent); }
+  .topbar-left .subtitle { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .auth-btn { padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all .2s; }
+  .auth-btn:hover { border-color: var(--accent); color: var(--text); }
+  .auth-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .auth-btn.primary:hover { opacity: 0.85; }
+  .auth-btn.danger { border-color: #ef444444; color: var(--red); }
+  .auth-btn.danger:hover { background: #ef444412; }
+  .user-chip { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; color: var(--accent2); }
+  .user-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; width: 100%; max-width: 400px; margin: 1rem; }
+  .modal h2 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 1.2rem; }
+  .modal-tabs { display: flex; gap: 4px; margin-bottom: 1.4rem; }
+  .modal-tab { flex: 1; padding: 7px; text-align: center; border-radius: 6px; font-size: 13px; cursor: pointer; color: var(--muted); border: 1px solid var(--border); transition: all .2s; }
+  .modal-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .modal-form { display: none; flex-direction: column; gap: 10px; }
+  .modal-form.active { display: flex; }
+  .modal-form input { padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; }
+  .modal-form input:focus { border-color: var(--accent); }
+  .modal-form button { padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .2s; }
+  .modal-form button:hover { opacity: 0.85; }
+  .modal-error { font-size: 12px; color: var(--red); min-height: 16px; }
+  .modal-close { float: right; background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-top: 1.5rem; }
+  .input-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  input[type="text"] { flex: 1; min-width: 200px; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; outline: none; transition: border-color .2s; }
+  input[type="text"]:focus { border-color: var(--accent); }
+  .btn { padding: 10px 22px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: opacity .2s; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+  .upload-label { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px dashed var(--border); border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 13px; transition: border-color .2s; }
+  .upload-label:hover { border-color: var(--accent); color: var(--text); }
+  #fileInput { display: none; }
+  #fileList { font-size: 12px; color: var(--green); margin-top: 6px; }
+  .cache-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 1rem; }
+  .cache-badge.domain { background: rgba(245,158,11,0.1); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+  .cache-badge.user   { background: rgba(34,197,94,0.1);  color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .cache-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  #progressSection { display: none; margin-top: 1.5rem; }
+  .progress-log { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 13px; color: var(--muted); }
+  .progress-log .line { padding: 2px 0; }
+  .progress-log .line.new { color: var(--text); }
+  #historySection { display: none; margin-top: 1.5rem; }
+  .history-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 10px; flex-wrap: wrap; }
+  .history-item:last-child { border-bottom: none; }
+  .history-domain { font-size: 14px; font-weight: 500; color: var(--accent2); cursor: pointer; }
+  .history-domain:hover { text-decoration: underline; }
+  .history-date { font-size: 12px; color: var(--muted); }
+  .history-del { background: none; border: 1px solid #ef444430; color: var(--red); padding: 3px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: background .2s; }
+  .history-del:hover { background: #ef444412; }
+  #resultSection { display: none; margin-top: 1.5rem; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+  .tab { padding: 8px 16px; cursor: pointer; border-radius: 6px 6px 0 0; font-size: 13px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; transition: all .2s; }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .agent-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-green  { background: #16532228; color: var(--green); border: 1px solid #22c55e44; }
+  .badge-red    { background: #7f1d1d28; color: var(--red);   border: 1px solid #ef444444; }
+  .badge-blue   { background: #1e3a5f28; color: var(--blue);  border: 1px solid #3b82f644; }
+  .badge-purple { background: #2e1065aa; color: #a78bfa;       border: 1px solid #7c3aed44; }
+  .output { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem 2rem; line-height: 1.85; font-size: 14px; color: var(--text); max-height: 580px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  .output h1 { font-size: 1.4rem; font-weight: 700; color: var(--accent2); margin: 0 0 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border); }
+  .output h2 { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 1.8rem 0 0.6rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .output h2::before { content: ''; display: inline-block; width: 4px; height: 16px; background: var(--accent); border-radius: 2px; flex-shrink: 0; }
+  .output h3 { font-size: 0.88rem; font-weight: 600; color: var(--accent2); margin: 1.2rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .output h4 { font-size: 0.95rem; font-weight: 600; color: var(--text); margin: 1rem 0 0.3rem; }
+  .output p { margin: 0.5rem 0 0.8rem; color: #b0b3c6; }
+  .output strong { color: #fff; font-weight: 600; }
+  .output em { color: var(--accent2); font-style: italic; }
+  .output ul { list-style: none; padding: 0; margin: 0.4rem 0 1rem; }
+  .output ul li { position: relative; padding: 0.4rem 0.5rem 0.4rem 1.5rem; color: #b0b3c6; border-radius: 6px; transition: background 0.15s; margin-bottom: 2px; }
+  .output ul li:hover { background: rgba(108,99,255,0.06); }
+  .output ul li::before { content: ''; position: absolute; left: 0.45rem; top: 0.78rem; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.8; }
+  .output ol { list-style: none; padding: 0; margin: 0.4rem 0 1rem; counter-reset: ol-counter; }
+  .output ol li { position: relative; padding: 0.4rem 0.5rem 0.4rem 2.4rem; color: #b0b3c6; border-radius: 6px; counter-increment: ol-counter; margin-bottom: 4px; }
+  .output ol li::before { content: counter(ol-counter); position: absolute; left: 0.4rem; top: 0.42rem; width: 1.3rem; height: 1.3rem; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: monospace; }
+  .output li strong { color: #fff; }
+  .output blockquote { border-left: 3px solid var(--accent); margin: 1rem 0; padding: 0.7rem 1.2rem; background: rgba(108,99,255,0.07); border-radius: 0 8px 8px 0; color: var(--muted); font-style: italic; }
+  .output code { font-family: monospace; font-size: 12px; background: var(--surface2); padding: 2px 7px; border-radius: 4px; color: var(--accent2); border: 1px solid var(--border); }
+  .output pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 0.8rem 0; }
+  .output pre code { background: transparent; border: none; padding: 0; color: var(--text); }
+  .output hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+  .output table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 13px; }
+  .output th { background: var(--surface2); color: var(--accent2); padding: 8px 14px; text-align: left; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; border-bottom: 1px solid var(--border); font-family: monospace; }
+  .output td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: #b0b3c6; vertical-align: top; }
+  .output tr:hover td { background: rgba(108,99,255,0.04); }
+  .output a { color: var(--accent2); text-decoration: none; }
+  .output a:hover { text-decoration: underline; }
+  .output::-webkit-scrollbar { width: 4px; }
+  .output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .paper-item { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 10px; }
+  .paper-item:last-child { border-bottom: none; }
+  .paper-source { font-size: 11px; padding: 2px 7px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; margin-top: 3px; }
+  .source-arxiv { background: #1e3a5f44; color: var(--blue); }
+  .source-user  { background: #16532244; color: var(--green); }
+  .paper-title  { font-size: 13px; font-weight: 500; }
+  .paper-meta   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .paper-title a { color: var(--accent); text-decoration: none; }
+  .paper-title a:hover { text-decoration: underline; }
+  .stats-bar { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .stat { font-size: 12px; color: var(--muted); }
+  .stat b { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>Research <span>Intelligence</span></h1>
+      <p class="subtitle">Multi-agent · ArXiv · Vector RAG · Reflective pipeline · Cached</p>
+    </div>
+    <div class="topbar-right" id="authArea">
+      <button class="auth-btn primary" onclick="openModal()">Login / Register</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="input-row">
+      <input type="text" id="domainInput" placeholder="e.g. transformer attention mechanisms, CRISPR gene editing..." />
+      <button class="btn btn-primary" id="runBtn" onclick="startResearch()">Analyse ↗</button>
+    </div>
+    <div style="margin-top:12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <label class="upload-label" for="fileInput">📎 Add your own PDF papers (optional)</label>
+      <input type="file" id="fileInput" accept=".pdf" multiple onchange="updateFileList()"/>
+      <span id="fileList"></span>
+    </div>
+  </div>
+  <div id="progressSection">
+    <div class="card" style="padding-bottom:0.8rem">
+      <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">Pipeline running...</div>
+      <div class="progress-log" id="progressLog"></div>
+    </div>
+  </div>
+  <div id="historySection">
+    <div class="card">
+      <div style="font-size:13px; font-weight:600; color:var(--text); margin-bottom:1rem;">
+        Your saved reports <span style="color:var(--muted); font-weight:400; font-size:12px;">(survives refresh &amp; restart)</span>
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+  <div id="resultSection">
+    <div id="cacheBadgeArea"></div>
+    <div class="stats-bar" id="statsBar"></div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('report')">📋 Full Report</div>
+      <div class="tab" onclick="switchTab('pros')">🟢 Pros</div>
+      <div class="tab" onclick="switchTab('cons')">🔴 Cons</div>
+      <div class="tab" onclick="switchTab('future')">🔵 Future</div>
+      <div class="tab" onclick="switchTab('papers')">📄 Papers</div>
+    </div>
+    <div class="tab-panel active" id="panel-report">
+      <div class="agent-header"><span class="badge badge-purple">Supervisor synthesis</span></div>
+      <div class="output" id="out-report"></div>
+    </div>
+    <div class="tab-panel" id="panel-pros">
+      <div class="agent-header"><span class="badge badge-green">Pros agent · Groq Llama 3.3 70B</span></div>
+      <div class="output" id="out-pros"></div>
+    </div>
+    <div class="tab-panel" id="panel-cons">
+      <div class="agent-header"><span class="badge badge-red">Cons agent · Cerebras Llama 3.1 70B</span></div>
+      <div class="output" id="out-cons"></div>
+    </div>
+    <div class="tab-panel" id="panel-future">
+      <div class="agent-header"><span class="badge badge-blue">Future agent · DeepSeek R1</span></div>
+      <div class="output" id="out-future"></div>
+    </div>
+    <div class="tab-panel" id="panel-papers">
+      <div class="agent-header"><span class="badge badge-purple">Source papers</span></div>
+      <div id="out-papers"></div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2>Account</h2>
+    <div class="modal-tabs">
+      <div class="modal-tab active" onclick="switchModalTab('login')">Login</div>
+      <div class="modal-tab" onclick="switchModalTab('register')">Register</div>
+    </div>
+    <div class="modal-form active" id="loginForm">
+      <input type="text" id="loginUser" placeholder="Username"/>
+      <input type="password" id="loginPass" placeholder="Password"/>
+      <div class="modal-error" id="loginError"></div>
+      <button onclick="doLogin()">Login</button>
+    </div>
+    <div class="modal-form" id="registerForm">
+      <input type="text" id="regUser" placeholder="Username (min 3 chars)"/>
+      <input type="password" id="regPass" placeholder="Password (min 4 chars)"/>
+      <div class="modal-error" id="registerError"></div>
+      <button onclick="doRegister()">Create Account</button>
+    </div>
+  </div>
+</div>
+<script>
+marked.setOptions({ breaks: true, gfm: true });
+let authToken    = localStorage.getItem('ris_token')    || null;
+let authUsername = localStorage.getItem('ris_username') || null;
+function saveAuth(token, username) { authToken=token; authUsername=username; localStorage.setItem('ris_token',token); localStorage.setItem('ris_username',username); }
+function clearAuth() { authToken=null; authUsername=null; localStorage.removeItem('ris_token'); localStorage.removeItem('ris_username'); }
+function updateAuthUI() {
+  const area = document.getElementById('authArea');
+  if (authToken && authUsername) {
+    area.innerHTML = `<div class="user-chip"><span class="user-dot"></span>${authUsername}</div><button class="auth-btn" onclick="showHistory()">My Reports</button><button class="auth-btn danger" onclick="logout()">Logout</button>`;
+    loadHistory();
+  } else {
+    area.innerHTML = `<button class="auth-btn primary" onclick="openModal()">Login / Register</button>`;
+    document.getElementById('historySection').style.display = 'none';
+  }
+}
+function logout() { clearAuth(); updateAuthUI(); document.getElementById('historySection').style.display='none'; }
+function openModal()  { document.getElementById('modalOverlay').classList.add('open'); }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function closeModalOutside(e) { if(e.target.id==='modalOverlay') closeModal(); }
+function switchModalTab(tab) {
+  document.querySelectorAll('.modal-tab').forEach((t,i)=>t.classList.toggle('active',['login','register'][i]===tab));
+  document.getElementById('loginForm').classList.toggle('active',tab==='login');
+  document.getElementById('registerForm').classList.toggle('active',tab==='register');
+  document.getElementById('loginError').textContent=''; document.getElementById('registerError').textContent='';
+}
+async function doLogin() {
+  const u=document.getElementById('loginUser').value.trim(), p=document.getElementById('loginPass').value, e=document.getElementById('loginError');
+  if(!u||!p){e.textContent='Fill in both fields';return;}
+  try { const fd=new FormData(); fd.append('username',u); fd.append('password',p);
+    const res=await fetch('/api/login',{method:'POST',body:fd}); const d=await res.json();
+    if(!res.ok){e.textContent=d.detail||'Login failed';return;}
+    saveAuth(d.token,d.username); closeModal(); updateAuthUI();
+  } catch(err){e.textContent='Network error';}
+}
+async function doRegister() {
+  const u=document.getElementById('regUser').value.trim(), p=document.getElementById('regPass').value, e=document.getElementById('registerError');
+  if(!u||!p){e.textContent='Fill in both fields';return;}
+  try { const fd=new FormData(); fd.append('username',u); fd.append('password',p);
+    const res=await fetch('/api/register',{method:'POST',body:fd}); const d=await res.json();
+    if(!res.ok){e.textContent=d.detail||'Registration failed';return;}
+    saveAuth(d.token,d.username); closeModal(); updateAuthUI();
+  } catch(err){e.textContent='Network error';}
+}
+function showHistory() { const s=document.getElementById('historySection'); s.style.display=s.style.display==='none'?'block':'none'; }
+async function loadHistory() {
+  if(!authToken) return;
+  try { const res=await fetch('/api/my-history',{headers:{Authorization:`Bearer ${authToken}`}});
+    if(!res.ok) return; const data=await res.json();
+    const list=document.getElementById('historyList');
+    if(!data.history.length){list.innerHTML='<p style="color:var(--muted);font-size:13px;">No saved reports yet.</p>';return;}
+    list.innerHTML=data.history.map(h=>`<div class="history-item"><div><div class="history-domain" onclick="loadHistoryReport('${encodeURIComponent(h.domain)}')">${h.domain}</div><div class="history-date">${new Date(h.saved_at).toLocaleString()}</div></div><button class="history-del" onclick="deleteHistoryReport('${encodeURIComponent(h.domain)}')">Delete</button></div>`).join('');
+    document.getElementById('historySection').style.display='block';
+  } catch(e){}
+}
+async function loadHistoryReport(enc) {
+  const domain=decodeURIComponent(enc);
+  const res=await fetch(`/api/my-report/${encodeURIComponent(domain)}`,{headers:{Authorization:`Bearer ${authToken}`}});
+  if(!res.ok) return; const {job_id}=await res.json();
+  loadResult(job_id); document.getElementById('domainInput').value=domain;
+}
+async function deleteHistoryReport(enc) {
+  const domain=decodeURIComponent(enc);
+  await fetch(`/api/my-report/${encodeURIComponent(domain)}`,{method:'DELETE',headers:{Authorization:`Bearer ${authToken}`}});
+  loadHistory();
+}
+function updateFileList() { const f=document.getElementById('fileInput').files; document.getElementById('fileList').textContent=f.length?`${f.length} PDF(s) selected`:''; }
+function renderMd(text) { if(!text) return '<p style="color:var(--muted);font-style:italic;">No output yet.</p>'; return marked.parse(text); }
+async function startResearch() {
+  const domain=document.getElementById('domainInput').value.trim();
+  if(!domain){alert('Please enter a research domain.');return;}
+  const btn=document.getElementById('runBtn'); btn.disabled=true; btn.textContent='Running...';
+  document.getElementById('progressSection').style.display='block';
+  document.getElementById('resultSection').style.display='none';
+  document.getElementById('cacheBadgeArea').innerHTML='';
+  document.getElementById('progressLog').innerHTML='';
+  const fd=new FormData(); fd.append('domain',domain);
+  for(const f of document.getElementById('fileInput').files) fd.append('files',f);
+  const headers=authToken?{Authorization:`Bearer ${authToken}`}:{};
+  const res=await fetch('/api/research',{method:'POST',body:fd,headers});
+  const info=await res.json(); const {job_id,cached}=info;
+  if(cached==='user'){addLog('⚡ Loading from your saved reports (instant)');document.getElementById('cacheBadgeArea').innerHTML='<div class="cache-badge user"><span class="cache-dot"></span>From your saved history</div>';}
+  else if(cached==='domain'){addLog('⚡ Loading from shared domain cache (instant)');document.getElementById('cacheBadgeArea').innerHTML='<div class="cache-badge domain"><span class="cache-dot"></span>Cached result · refreshes in 24h</div>';}
+  const evtSource=new EventSource(`/api/stream/${job_id}`);
+  evtSource.onmessage=(e)=>{const d=JSON.parse(e.data);
+    if(d.type==='progress'){addLog(d.message);}
+    else if(d.type==='done'){evtSource.close();loadResult(job_id);if(authToken)loadHistory();}
+    else if(d.type==='error'){evtSource.close();addLog('Error: '+d.message);btn.disabled=false;btn.textContent='Analyse ↗';}};
+}
+function addLog(msg){const log=document.getElementById('progressLog');const line=document.createElement('div');line.className='line new';line.textContent=msg;log.appendChild(line);log.scrollTop=log.scrollHeight;setTimeout(()=>line.classList.remove('new'),3000);}
+async function loadResult(jobId){
+  const res=await fetch(`/api/result/${jobId}`); const data=await res.json();
+  document.getElementById('out-report').innerHTML=renderMd(data.final_report);
+  document.getElementById('out-pros').innerHTML=renderMd(data.pros);
+  document.getElementById('out-cons').innerHTML=renderMd(data.cons);
+  document.getElementById('out-future').innerHTML=renderMd(data.future);
+  document.getElementById('out-papers').innerHTML=(data.papers||[]).map(p=>`<div class="paper-item"><span class="paper-source ${p.source==='user_upload'?'source-user':'source-arxiv'}">${p.source==='user_upload'?'Your PDF':'ArXiv'}</span><div><div class="paper-title">${p.url?`<a href="${p.url}" target="_blank">${p.title}</a>`:p.title}</div><div class="paper-meta">${p.published||''}</div></div></div>`).join('');
+  document.getElementById('statsBar').innerHTML=`<div class="stat">Papers: <b>${(data.papers||[]).length}</b></div><div class="stat">Chunks: <b>${data.vector_stats?.total_chunks||'—'}</b></div><div class="stat">Time: <b>${data.elapsed||'—'}s</b></div><div class="stat">Domain: <b>${data.domain}</b></div>${data.from_cache?`<div class="stat">Source: <b style="color:var(--amber)">${data.from_cache==='user'?'Your cache':'Shared cache'}</b></div>`:''}`;
+  document.getElementById('resultSection').style.display='block'; switchTab('report');
+  const btn=document.getElementById('runBtn'); btn.disabled=false; btn.textContent='Analyse ↗';
+}
+function switchTab(name){const names=['report','pros','cons','future','papers'];document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===`panel-${name}`));}
+updateAuthUI();
+</script>
+</body>
+</html>

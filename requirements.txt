@@ -1,0 +1,21 @@
+litellm
+chromadb
+sentence-transformers
+arxiv
+requests
+fastapi
+uvicorn
+python-multipart
+aiohttp
+asyncio-throttle
+python-dotenv
+pydantic
+tqdm
+numpy
+langchain-text-splitters
+# pymupdf==1.24.0
+# pypdf2==3.0.1
+
+# Auth (Level 2 cache)
+passlib[bcrypt]
+python-jose[cryptography]
